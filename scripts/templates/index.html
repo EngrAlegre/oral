@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PANGIL - Oral Imaging Detection System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+         Header 
+        <header class="header">
+            <h1 class="logo">PANGIL</h1>
+            <p class="subtitle">Oral Imaging Detection System</p>
+        </header>
+
+         Main Content 
+        <main class="main-content">
+             Tabs 
+            <div class="tabs">
+                <button class="tab-button active" data-tab="camera">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                    Real-time Detection
+                </button>
+                <button class="tab-button" data-tab="upload">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Image Upload
+                </button>
+            </div>
+
+             Camera Tab 
+            <div id="camera-tab" class="tab-content active">
+                <div class="camera-container">
+                    <video id="video" autoplay playsinline></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <div id="camera-overlay" class="camera-overlay"></div>
+                </div>
+                <div class="button-group">
+                    <button id="start-camera" class="btn btn-primary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                        </svg>
+                        Start Camera
+                    </button>
+                    <button id="capture" class="btn btn-secondary" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                        </svg>
+                        Capture & Analyze
+                    </button>
+                </div>
+            </div>
+
+             Upload Tab 
+            <div id="upload-tab" class="tab-content">
+                <div class="upload-container">
+                    <div id="drop-zone" class="drop-zone">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <p>Drop image here or click to upload</p>
+                        <input type="file" id="file-input" accept="image/*" style="display: none;">
+                    </div>
+                    <div id="preview-container" class="preview-container" style="display: none;">
+                        <img id="preview-image" alt="Preview">
+                        <button id="analyze-upload" class="btn btn-primary">Analyze Image</button>
+                    </div>
+                </div>
+            </div>
+
+             Results Panel 
+            <div id="results-panel" class="results-panel" style="display: none;">
+                <h2>Detection Results</h2>
+                
+                 Demo Mode Banner 
+                <div id="demo-banner" class="banner banner-info" style="display: none;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <span>Using demo data. Connect to backend for real detection.</span>
+                </div>
+
+                 Image with Bounding Boxes 
+                <div id="detection-image-container" class="detection-image-container">
+                    <div class="image-wrapper">
+                        <img id="detection-image" alt="Detection">
+                        <div id="bounding-boxes"></div>
+                        <div id="object-count" class="object-count"></div>
+                    </div>
+                </div>
+
+                 Detected Lesions 
+                <div class="section">
+                    <h3>Detected Oral Lesions</h3>
+                    <div id="lesions-list" class="lesions-list"></div>
+                </div>
+
+                 Disease Probabilities 
+                <div class="section">
+                    <h3>Disease Probability Analysis</h3>
+                    <div id="disease-list" class="disease-list"></div>
+                </div>
+
+                 Recommendations 
+                <div id="recommendations-section" class="section">
+                    <h3>Medical Recommendations</h3>
+                    <div id="recommendations-list" class="recommendations-list"></div>
+                </div>
+
+                 Disclaimer 
+                <div class="disclaimer">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p><strong>Medical Disclaimer:</strong> This tool is for screening purposes only and should not replace professional medical diagnosis. Please consult with a qualified healthcare provider for proper evaluation and treatment.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

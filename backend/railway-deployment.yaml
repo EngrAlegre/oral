@@ -1,0 +1,7 @@
+# Railway.app deployment configuration
+# Use Railway dashboard to set environment variables
+
+MODEL_PATH=backend/best.pt
+FRONTEND_URL=https://pangil.vercel.app
+ENVIRONMENT=production
+STORAGE_DIR=backend/detections

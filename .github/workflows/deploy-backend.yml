@@ -1,0 +1,24 @@
+name: Deploy Backend to Render
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy to Render
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }} \
+            -H "Content-Type: application/json"
+
+      - name: Verify Deployment
+        run: |
+          sleep 30
+          curl -f https://${{ secrets.RENDER_SERVICE_URL }}/health || exit 1
