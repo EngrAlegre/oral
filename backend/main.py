@@ -25,6 +25,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://p030bzfb-3000.asse.devtunnels.ms",
+        "https://oral-inky.vercel.app",
         os.getenv("FRONTEND_URL", "https://pangil.vercel.app")
     ],
     allow_credentials=True,
