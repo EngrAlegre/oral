@@ -22,51 +22,91 @@ export function CameraView({ onDetection, isAnalyzing, setIsAnalyzing }: CameraV
 
   const startCamera = async () => {
     try {
+      console.log("[Camera] Starting camera...")
+      setError(null)
+      
       // Prefer back camera on phones, no audio
       let stream: MediaStream | null = null
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false })
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: { ideal: "environment" } }, 
+          audio: false 
+        })
+        console.log("[Camera] Got back camera stream")
       } catch {
         // Fallback to front
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+          stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: "user" }, 
+            audio: false 
+          })
+          console.log("[Camera] Got front camera stream")
         } catch (e2) {
           // Fallback to first available device
           const devices = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput")
+          console.log("[Camera] Available devices:", devices.length)
           if (devices[0]) {
-            stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: devices[0].deviceId } }, audio: false })
+            stream = await navigator.mediaDevices.getUserMedia({ 
+              video: { deviceId: { exact: devices[0].deviceId } }, 
+              audio: false 
+            })
+            console.log("[Camera] Got device stream:", devices[0].label)
           } else {
             throw e2
           }
         }
       }
-      if (videoRef.current && stream) {
-        videoRef.current.srcObject = stream
-        // Try to start playback using multiple readiness signals and timeout fallback
-        await new Promise<void>((resolve) => {
-          if (!videoRef.current) return resolve()
-          let done = false
-          const finish = () => {
-            if (!done) {
-              done = true
-              resolve()
-            }
-          }
-          videoRef.current.onloadedmetadata = finish
-          videoRef.current.oncanplay = finish
-          setTimeout(finish, 800)
-        })
-        try { await videoRef.current.play() } catch {}
-        setIsCameraActive(true)
-        setError(null)
+      
+      console.log("[Camera] Checking refs - videoRef:", !!videoRef.current, "stream:", !!stream)
+      
+      if (!videoRef.current) {
+        throw new Error("Video element not found")
       }
+      
+      if (!stream) {
+        throw new Error("No stream available")
+      }
+      
+      videoRef.current.srcObject = stream
+      console.log("[Camera] Stream attached to video element")
+      
+      // Wait for video to be ready
+      await new Promise<void>((resolve, reject) => {
+        if (!videoRef.current) return resolve()
+        
+        const timeout = setTimeout(() => {
+          console.warn("[Camera] Timeout waiting for video ready")
+          resolve()
+        }, 3000)
+        
+        const onReady = () => {
+          clearTimeout(timeout)
+          console.log("[Camera] Video ready, dimensions:", videoRef.current?.videoWidth, "x", videoRef.current?.videoHeight)
+          resolve()
+        }
+        
+        videoRef.current.onloadedmetadata = onReady
+        videoRef.current.oncanplay = onReady
+      })
+      
+      // Start playback
+      try { 
+        await videoRef.current.play()
+        console.log("[Camera] Video playing")
+      } catch (playErr) {
+        console.error("[Camera] Play error:", playErr)
+      }
+      
+      setIsCameraActive(true)
+      console.log("[Camera] Camera activated successfully")
     } catch (err: any) {
+      console.error("[Camera] Failed to start:", err)
       let msg = "Unable to access camera. Please check permissions."
       if (err?.name === "NotReadableError") msg = "Camera is in use by another app. Close it and try again."
       if (err?.name === "NotAllowedError") msg = "Camera permission denied. Allow it in site settings."
       if (err?.name === "NotFoundError") msg = "No camera device found."
       setError(msg)
-      console.error("Camera error:", err)
+      setIsCameraActive(false)
     }
   }
 
@@ -80,30 +120,39 @@ export function CameraView({ onDetection, isAnalyzing, setIsAnalyzing }: CameraV
     stopRealTimeDetection()
   }
 
-  const captureFrame = (): File | null => {
+  const captureFrame = async (): Promise<File | null> => {
     if (!videoRef.current || !canvasRef.current) return null
 
+    const video = videoRef.current
     const canvas = canvasRef.current
-    canvas.width = videoRef.current.videoWidth
-    canvas.height = videoRef.current.videoHeight
-    const ctx = canvas.getContext("2d")
-    if (ctx) {
-      ctx.drawImage(videoRef.current, 0, 0)
-      return new Promise((resolve) => {
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(new File([blob], "frame.jpg", { type: "image/jpeg" }))
-            } else {
-              resolve(null)
-            }
-          },
-          "image/jpeg",
-          0.9,
-        )
-      }) as any
+    
+    // Check if video is actually playing
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+      console.warn("[Camera] Video not ready")
+      return null
     }
-    return null
+
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext("2d")
+    
+    if (!ctx) return null
+
+    ctx.drawImage(video, 0, 0)
+    
+    return new Promise((resolve) => {
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(new File([blob], "frame.jpg", { type: "image/jpeg" }))
+          } else {
+            resolve(null)
+          }
+        },
+        "image/jpeg",
+        0.9,
+      )
+    })
   }
 
   const startRealTimeDetection = async () => {
@@ -166,23 +215,28 @@ export function CameraView({ onDetection, isAnalyzing, setIsAnalyzing }: CameraV
   return (
     <div className="space-y-4">
       <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
-        {isCameraActive ? (
-          <>
-            <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
-            <canvas ref={canvasRef} className="hidden" />
-            {isRealTimeDetection && (
-              <div className="absolute top-4 right-4 flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                <div className="h-2 w-2 bg-white rounded-full animate-pulse" />
-                Live Detection
-              </div>
-            )}
-          </>
-        ) : (
+        <video 
+          ref={videoRef} 
+          autoPlay 
+          playsInline 
+          muted 
+          className={`h-full w-full object-cover ${!isCameraActive ? 'hidden' : ''}`}
+        />
+        <canvas ref={canvasRef} className="hidden" />
+        
+        {!isCameraActive && (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
               <Camera className="mx-auto h-12 w-12 text-muted-foreground" />
               <p className="mt-2 text-sm text-muted-foreground">Camera inactive</p>
             </div>
+          </div>
+        )}
+        
+        {isRealTimeDetection && (
+          <div className="absolute top-4 right-4 flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+            <div className="h-2 w-2 bg-white rounded-full animate-pulse" />
+            Live Detection
           </div>
         )}
       </div>

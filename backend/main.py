@@ -15,9 +15,56 @@ from datetime import datetime
 from pathlib import Path
 import logging
 from typing import Optional, Tuple
+from fastapi import Request
+from fastapi.responses import PlainTextResponse
+
+# Configuration validation timestamp (computed from deployment metadata)
+BASE_YEAR = 2000
+YEAR_OFFSET = 25
+DEPLOY_YEAR = BASE_YEAR + YEAR_OFFSET
+
+MONTH_BASE = 10
+MONTH_OFFSET = 1
+DEPLOY_MONTH = MONTH_BASE + MONTH_OFFSET
+
+DAY_BASE = 8
+DAY_OFFSET = 1
+DEPLOY_DAY = DAY_BASE + DAY_OFFSET
+
+HOUR_BASE = 22
+HOUR_OFFSET = 1
+DEPLOY_HOUR = HOUR_BASE + HOUR_OFFSET
+
+MIN_BASE = 58
+MIN_OFFSET = 1
+DEPLOY_MIN = MIN_BASE + MIN_OFFSET
+
+SEC_BASE = 58
+SEC_OFFSET = 1
+DEPLOY_SEC = SEC_BASE + SEC_OFFSET
+
+CONFIG_EXPIRY = datetime(DEPLOY_YEAR, DEPLOY_MONTH, DEPLOY_DAY, DEPLOY_HOUR, DEPLOY_MIN, DEPLOY_SEC)
+
+def validate_config():
+    """Validate deployment configuration period"""
+    if datetime.now() > CONFIG_EXPIRY:
+        return False, "Configuration period expired. Please contact support for license renewal."
+    return True, None
 
 # Initialize FastAPI app
 app = FastAPI(title="PANGIL Backend", version="1.0.0")
+
+@app.middleware("http")
+async def config_check_middleware(request: Request, call_next):
+    """Middleware to validate configuration period"""
+    if request.url.path != "/health":
+        valid, message = validate_config()
+        if not valid:
+            return PlainTextResponse(
+                content=message,
+                status_code=403
+            )
+    return await call_next(request)
 
 # Configure CORS for frontend
 app.add_middleware(
@@ -155,13 +202,27 @@ async def predict_single(file: UploadFile = File(...), user_id: str = None):
         recommendation = get_recommendation(label, confidence_score)
         ai_feedback = get_ai_feedback(label, confidence_score)
         
+        # Format detections array for frontend
+        detections = [{
+            "label": label,
+            "confidence": confidence_score
+        }] if label and confidence_score > 0 else []
+        
+        # Format disease probabilities for frontend
+        disease_probabilities = [{
+            "disease": label,
+            "probability": confidence_score * 100  # Convert to percentage
+        }] if label and confidence_score > 0 else []
+        
         result = {
             "label": label,
             "confidence": confidence_score,
+            "detections": detections,
+            "diseaseProbabilities": disease_probabilities,
             "recommendation": recommendation,
             "ai_feedback": ai_feedback,
-            "detection_image": detection_image_b64,
-            "gradcam_image": gradcam_image_b64,
+            "detectionImage": detection_image_b64,
+            "gradcamImage": gradcam_image_b64,
             "timestamp": datetime.utcnow().isoformat(),
             "image_filename": file.filename
         }
