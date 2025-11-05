@@ -1,12 +1,12 @@
 import { DetectionInterface } from "@/components/detection-interface"
-import { LicenseGuard } from "@/components/license-guard"
+import { FeatureGuard } from "@/components/feature-guard"
 
 export default function Home() {
   return (
-    <LicenseGuard>
+    <FeatureGuard>
       <main className="min-h-screen">
         <DetectionInterface />
       </main>
-    </LicenseGuard>
+    </FeatureGuard>
   )
 }
