@@ -3,15 +3,17 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:800
 export interface DetectionResult {
   label: string
   confidence: number
+  detections: Array<{ label: string; confidence: number }>
+  diseaseProbabilities: Array<{ disease: string; probability: number }>
   recommendation: string
   ai_feedback: {
     detection: string
     segmentation: string
     gradcam: string
   }
-  detection_image: string
-  segmentation_image: string
-  gradcam_image: string
+  detectionImage: string
+  segmentationImage?: string
+  gradcamImage: string
 }
 
 async function fetchWithRetry(

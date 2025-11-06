@@ -86,9 +86,9 @@ export function ImageUpload({ onDetection, isAnalyzing, setIsAnalyzing, userId }
         })),
         recommendations: result.recommendation,
         aiFeeback: result.ai_feedback,
-        detectionImage: result.detection_image,
-        segmentationImage: result.segmentation_image,
-        gradcamImage: result.gradcam_image,
+        detectionImage: result.detectionImage,
+        segmentationImage: result.segmentationImage,
+        gradcamImage: result.gradcamImage,
       })
     } catch (err) {
       console.error("[v0] Detection error:", err)
