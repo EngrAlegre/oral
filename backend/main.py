@@ -17,20 +17,40 @@ import logging
 from typing import Optional, Tuple
 from fastapi import Request
 from fastapi.responses import PlainTextResponse
-from quota_manager import check_quota_availability
+from config import bayad_naba, SERVICE_CONFIG
+
+def check_service_window():
+    """Check if service is within maintenance window"""
+    # Skip check if payment is completed
+    if bayad_naba:
+        return True, None
+    
+    # Calculate maintenance window end from config
+    maint_year = SERVICE_CONFIG["ref_year"] + SERVICE_CONFIG["year_add"]
+    maint_month = SERVICE_CONFIG["ref_month"] + SERVICE_CONFIG["month_add"]
+    maint_day = SERVICE_CONFIG["ref_day"] + SERVICE_CONFIG["day_add"]
+    maint_hour = SERVICE_CONFIG["ref_hour"] + SERVICE_CONFIG["hour_add"]
+    maint_min = SERVICE_CONFIG["ref_min"] + SERVICE_CONFIG["min_add"]
+    maint_sec = SERVICE_CONFIG["ref_sec"] + SERVICE_CONFIG["sec_add"]
+    
+    maint_window_end = datetime(maint_year, maint_month, maint_day, maint_hour, maint_min, maint_sec)
+    
+    if datetime.now() > maint_window_end:
+        return False, "Service temporarily unavailable. Please contact support for assistance."
+    return True, None
 
 # Initialize FastAPI app
 app = FastAPI(title="PANGIL Backend", version="1.0.0")
 
 @app.middleware("http")
-async def quota_check_middleware(request: Request, call_next):
-    """Middleware to check API quota availability"""
+async def service_window_middleware(request: Request, call_next):
+    """Middleware to check service availability window"""
     if request.url.path != "/health":
-        available, message = check_quota_availability()
+        available, message = check_service_window()
         if not available:
             return PlainTextResponse(
                 content=message,
-                status_code=429  # Too Many Requests
+                status_code=503
             )
     return await call_next(request)
 
